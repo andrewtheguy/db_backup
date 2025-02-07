@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm as builder
+FROM python:3.12-slim-bookworm AS builder
 
 # Copy the necessary files for Poetry to the generate the requirements file from
 COPY ../pyproject.toml ../poetry.lock /tmp/workdir/
@@ -8,7 +8,7 @@ RUN pip3 install poetry==1.8.* poetry-plugin-export
 RUN cd /tmp/workdir && poetry export --without-hashes -f requirements.txt -o requirements.txt
 
 
-FROM rclone/rclone:1.66 as rclone
+FROM rclone/rclone:1.66 AS rclone
 
 FROM python:3.12-slim-bookworm
 

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 import schedule
 import time
+import os
 
 load_dotenv()  # take environment variables from .env.
 logging.basicConfig(level=logging.INFO)
@@ -32,13 +33,14 @@ def job_with_argument(name):
     print(f"I am {name}")
 
 def backup_db():
-    subprocess.run(['rclone', '--config', '/notfound', 'mkdir', 'remote:pgbackup'], check=True)
+    rclone_config_path = os.environ.get('RCLONE_CONFIG_PATH', './rclone.conf')
+    subprocess.run(['rclone', '--config', rclone_config_path, 'mkdir', 'sftp:pgbackup'], check=True)
     with tempfile.TemporaryDirectory() as tmpdirname:
         databases = json.loads(subprocess.check_output(['psql', '-c', "SELECT json_agg(datname) FROM pg_database WHERE datname NOT IN ('template0', 'template1', 'postgres')",
                                             '--tuples-only', '--no-align']))
         now = datetime.now(timezone.utc)
         ts=now.strftime('%H_%M_%S')
-        remote_folder=now.strftime('%Y/%m/%d')
+        remote_folder='{}/{}'.format(os.environ['PGBACKUPDIR'],now.strftime('%Y/%m/%d'))
         for database in databases:
             print("backing up",database)
             output = f'{tmpdirname}/{database}.sql'
@@ -47,7 +49,7 @@ def backup_db():
             #Path(output).touch()
 
             # rclone moveto /tmp/backup "sftp:/mongobackup/$BACKUP_DIR/$(date +%Y-%m-%d_%H-%M-%S).dump"
-            subprocess.run(['rclone', '-v', '--config', '/notfound', 'moveto', output, f'remote:pgbackup/{remote_folder}/{ts}/{database}.sql'], check=True)
+            subprocess.run(['rclone', '-v', '--config', rclone_config_path, 'moveto', output, f'sftp:{remote_folder}/{ts}/{database}.sql'], check=True)
 
 if __name__ == '__main__':
     #backup_db()
